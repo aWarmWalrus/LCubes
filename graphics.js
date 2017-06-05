@@ -10,7 +10,7 @@ var squareYOffset = 0.0;
 var squareZOffset = 0.0;
 
 var lastSquareUpdateTime = 0;
-var rotVal = [0.0, 0.1, 0.0];
+var rotVal = [0.1, 0.0, 0.0];
 var incVal = {x:0.0, y:0.0, z:0.0};
 
 var programStart;
@@ -160,7 +160,7 @@ function drawScene() {
     perspectiveMatrix = makePerspective(45, 640.0/480.0, 0.1, 100.0);
 
     loadIdentity();
-    mvTranslate([-0.0, 0.0, -2.0]);
+    mvTranslate([-0.0, 0.0, -5.0]);
 
 	// Save the current matrix, then rotate before we draw.
 	mvPushMatrix();
@@ -261,5 +261,6 @@ function mvRotate(angle, v) {
     var inRadians = angle * Math.PI / 180.0;
 
     var m = Matrix.Rotation(inRadians, $V([v[0], v[1], v[2]])).ensure4x4();
+    console.log(m);
     multMatrix(m);
 }
