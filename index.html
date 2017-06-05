@@ -1,8 +1,37 @@
 <!DOCTYPE html>
 <html>
+  <head>
+    <title>LCubes Solution</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<script type="text/Javascript" src="sylvester.js"></script>
+		<script type="text/Javascript" src="glUtils.js"></script>
+    <script type="text/JavaScript" src="graphics.js"> </script>
+  </head>
+
   <body onload="start()">
-    <canvas id="glCanvas" width="640" height="480">
-      Babies are cool
+    <script id="shader-fs" type="x-shader/x-fragment">
+varying lowp vec4 vColor;
+
+void main(void) {
+    gl_FragColor = vColor;
+}
+    </script>
+    <script id="shader-vs" type="x-shader/x-vertex">
+      attribute vec3 aVertexPosition;
+      attribute vec4 aVertexColor;
+
+      uniform mat4 uMVMatrix;
+      uniform mat4 uPMatrix;
+
+			varying lowp vec4 vColor;
+
+      void main(void) {
+        gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
+				vColor = aVertexColor;
+      }
+    </script>
+    <canvas id="glcanvas" width="640" height="480">
+      Your browser doesn't appear to support the <code>&lt;canvas&gt;</code> element.
     </canvas>
   </body>
 </html>
