@@ -22,6 +22,8 @@ var vertexPositionAttribute;
 var vertexColorAttribute;
 var perspectiveMatrix;
 
+var cubeArray = [];
+
 function start() {
 
     programStart = (new Date).getTime();
@@ -62,7 +64,6 @@ function initWebGL(canvas) {
     if (!gl) {
         alert("unable to initialize WebGl. Your browser may not support it.");
     }
-
 }
 
 function initShaders() {
@@ -280,6 +281,7 @@ function drawScene() {
 
 }
 
+//
 // Matrix Utility Functions
 //
 
@@ -331,4 +333,26 @@ function mvRotate(angle, v) {
 
     var m = Matrix.Rotation(inRadians, $V([v[0], v[1], v[2]])).ensure4x4();
     multMatrix(m);
+}
+
+
+//
+// Cube Drawing Functions
+// All cubes have 0 rotation.
+// Specify color and position.
+//
+
+
+function addCube() {
+    // convert the array of colors into a table for all the vertices
+    var generatedColors = [];
+
+    for (j=0; j<6; j++) {
+        var c = colors[j];
+
+        // Repeate each color four times for the four vertices of the face
+        for (var i=0; i<4; i++) {
+            generatedColors = generatedColors.concat(c);
+        }
+    }
 }
