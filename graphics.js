@@ -17,6 +17,7 @@ var incVal = {x:0.0, y:0.0, z:0.0};
 var programStart;
 
 var mvMatrix;
+var mv2Matrix;
 var shaderProgram;
 var vertexPositionAttribute;
 var vertexColorAttribute;
@@ -225,13 +226,23 @@ function drawScene() {
 
     perspectiveMatrix = makePerspective(45, 640.0/480.0, 0.1, 100.0);
 
-    loadIdentity();
-    mvTranslate([-0.0, 0.0, -5.0]);
+    // load identities for both mvMatrices
+    mvMatrix = loadIdentity();
+    mv2Matrix = loadIdentity();
+
+    // Translate both mvMatrices
+    mvMatrix = mvTranslate(mvMatrix, [-2.0, 0.0, -5.0]);
+    mv2Matrix = mvTranslate(mv2Matrix, [2.0, 0.0, -5.0]);
 
 	// Save the current matrix, then rotate before we draw.
-	mvPushMatrix();
-    mvRotate(cubeRotation, rotVal);
-    mvTranslate([cubeXOffset, cubeYOffset, cubeZOffset]);
+	mvMatrix = mvPushMatrix(mvMatrix);
+	mv2Matrix = mvPushMatrix(mv2Matrix);
+
+    mvMatrix = mvRotate(mvMatrix, cubeRotation, rotVal);
+    mv2Matrix = mvRotate(mv2Matrix, cubeRotation, rotVal);
+
+    mvMatrix = mvTranslate(mvMatrix, [cubeXOffset, cubeYOffset, cubeZOffset]);
+    mv2Matrix = mvTranslate(mv2Matrix, [cubeXOffset, cubeYOffset, cubeZOffset]);
 
 	// Draw the cube by binding the array buffer to the cube's vertices
     // array, setting atributes, and pushing it to GL
@@ -252,7 +263,8 @@ function drawScene() {
 
     // Restore the original matrix
 
-    mvPopMatrix();
+    mv2Matrix = mvPopMatrix();
+    mvMatrix = mvPopMatrix();
 
     // Update the rotation for the next draw, if it's time to do so.
 
@@ -286,15 +298,15 @@ function drawScene() {
 //
 
 function loadIdentity() {
-    mvMatrix = Matrix.I(4);
+    return Matrix.I(4);
 }
 
-function multMatrix(m) {
-	mvMatrix = mvMatrix.x(m);
+function multMatrix(mv, m) {
+	return mv.x(m);
 }
 
-function mvTranslate(v) { 
-	multMatrix(Matrix.Translation($V([v[0], v[1], v[2]])).ensure4x4());
+function mvTranslate(mv, v) { 
+	return multMatrix(mv, Matrix.Translation($V([v[0], v[1], v[2]])).ensure4x4());
 }
 
 function setMatrixUniforms() {
@@ -303,17 +315,24 @@ function setMatrixUniforms() {
 
 	var mvUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix");
 	gl.uniformMatrix4fv(mvUniform, false, new Float32Array(mvMatrix.flatten()));
+
+	var mv2Uniform = gl.getUniformLocation(shaderProgram, "uMVMatrix");
+	gl.uniformMatrix4fv(mv2Uniform, false, new Float32Array(mv2Matrix.flatten()));
 }
 
 var mvMatrixStack = [];
 
 function mvPushMatrix(m) {
+    mvMatrixStack.push(m.dup());
+    return m.dup();
+    /*
 	if (m) {
 		mvMatrixStack.push(m.dup());
 		mvMatrix = m.dup();
 	} else {
 		mvMatrixStack.push(mvMatrix.dup());
 	}
+    */
 }
 
 function mvPopMatrix(m) {
@@ -321,18 +340,17 @@ function mvPopMatrix(m) {
         throw("Can't pop from an empty matrix stack.");
 	}
 
-    mvMatrix = mvMatrixStack.pop();
-    return mvMatrix;
+    return mvMatrixStack.pop();
 }
 
-function mvRotate(angle, v) {
+function mvRotate(mv, angle, v) {
     if (!v[0] && !v[1] && !v[2]) {
         return;
     }
     var inRadians = angle * Math.PI / 180.0;
 
     var m = Matrix.Rotation(inRadians, $V([v[0], v[1], v[2]])).ensure4x4();
-    multMatrix(m);
+    return multMatrix(mv, m);
 }
 
 
