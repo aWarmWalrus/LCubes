@@ -17,6 +17,18 @@ var lcubes = (function() {
             z: pos.z * 70}, color );
     }
 
+    // Cube is drawn relative to some hardcoded origin (for now)
+    function drawTransientCube(pos, color) {
+        var o = {x:0, y:2, z:0};
+        graphics.addCube( { x: (pos.x + o.x) * 70, 
+            y: (pos.y + o.y) * 70 + 35, 
+            z: (pos.z + o.z) * 70}, color );
+    }
+
+    function removeTransientCube() {
+        graphics.popCube();
+    }
+
     function drawConfig(origin, cubes, initDir) {
         if (cubes.length + 2 != num_cubes) {
             console.log("Error: cubes.length [" + cubes.length + "] != num_cubes [" + num_cubes + "] - 2");
@@ -97,6 +109,16 @@ var lcubes = (function() {
         return Math.abs(p2.x - p1.x) + Math.abs(p2.y - p1.y) + Math.abs(p2.z - p1.z);
     }
 
+    function gridDistanceVector(p1, p2) {
+        return {x: Math.abs(p2.x - p1.x),
+            y: Math.abs(p2.y - p1.y),
+            z: Math.abs(p2.z - p1.z)};
+    } 
+
+    function dotProduct(v1, v2) {
+        return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
+    }
+    
     function isCollision(coord, grid) {
         // Translate negative coords to array indices to get "v"irtual
         // coordinates
@@ -140,6 +162,7 @@ var lcubes = (function() {
     //
     // ------- Depth First Search for stable configurations
     //
+    //
     
     // [config] is the list of configurations until now
     //   in the beginning, should be an empty list
@@ -148,11 +171,23 @@ var lcubes = (function() {
     // [dir] is this block's direction. in the beginning, will
     //   always be {x:1, y:0, z:0}
     function dfs(config, pos, dir, collisionGrid) {
-        console.log(config);
+
         var origin = {x:0, y:0, z:0};
         if (config.length == num_cubes-2) {
+            var dv = gridDistanceVector(origin, pos);
+            var isPerpendicular = dotProduct(dv, dir) == 0;
+            if (gridDistance(pos, origin) != 1) {
+                console.log("rejected because not adjacent");
+            } else if (!pos.x == 0) {
+                console.log("rejected because adjacent on x axis");
+            } else if (!isPerpendicular) {
+                console.log("rejected because not perpendicular");
+            } else {
+                console.log("accepted... i think??");
+            }
+            var stable = (gridDistance(pos, origin) == 1) && (pos.x == 0) && isPerpendicular;
             return {
-                isStable: (gridDistance(pos, origin) == 1) && (pos.x == 0),
+                isStable: stable,
                 completeConfig: config
             };
         }
@@ -189,9 +224,13 @@ var lcubes = (function() {
         var collisions = init12x12x12();
 
         var config = [];
+        var origin = {x:0, y:0, z:0};
         var initPos = {x:1, y:0, z:0};
         var initDir = {x:1, y:0, z:0};
         markOccupied(initPos, collisions);
+        drawTransientCube(origin, colors[0]);
+        markOccupied(origin, collisions);
+        drawTransientCube(initPos, colors[1]);
         var resp = dfs(config, initPos, initDir, collisions);
         console.log(resp.completeConfig);
         drawConfig({x:0, y:2, z:0}, resp.completeConfig, initDir);

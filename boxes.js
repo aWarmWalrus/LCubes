@@ -25,7 +25,10 @@ var graphics = (function() {
         // Plane 
         var geometry = new THREE.PlaneBufferGeometry( 800, 800 );
         geometry.rotateX( - Math.PI / 2 );
-        var material = new THREE.MeshLambertMaterial( { color: 0xe0e0e0, overdraw: 0.5 } );
+        //var material = new THREE.MeshPhongMaterial( { color: 0xe0e0e0, overdraw: 0.5 } );
+        var material = new THREE.ShadowMaterial();
+        material.opacity = 0.5;
+
         plane = new THREE.Mesh( geometry, material );
         plane.receiveShadow = true;
         scene.add( plane );
@@ -43,8 +46,8 @@ var graphics = (function() {
         scene.add( light );
 
         // Directed Light
-        var dirLight = new THREE.DirectionalLight( 0xffffff, 0.2);
-        dirLight.position.set(-1, 0, 0);
+        var dirLight = new THREE.DirectionalLight( 0xffffff, 0.5);
+        dirLight.position.set(-1, 1, 1);
         dirLight.position.normalize();
         scene.add(dirLight);
 
@@ -132,13 +135,13 @@ var graphics = (function() {
 
     return {
         addCube: function(pos, color) {
-            var geometry = new THREE.BoxGeometry( 70, 70, 70 );
+            var geometry = new THREE.BoxGeometry( 67, 67, 67 );
             //console.log(geometry.faces.length);
             for ( var i = 0; i < geometry.faces.length; i += 2 ) {
                 geometry.faces[ i ].color.setHex( color );
                 geometry.faces[ i + 1 ].color.setHex( color );
             }
-            var material = new THREE.MeshLambertMaterial( { vertexColors: THREE.FaceColors, overdraw: 0.5 } );
+            var material = new THREE.MeshPhongMaterial( { vertexColors: THREE.FaceColors, overdraw: 0.5 } );
             var cube = new THREE.Mesh( geometry, material );
             cube.position.x = pos.x;
             cube.position.y = pos.y;
@@ -146,7 +149,17 @@ var graphics = (function() {
             cube.castShadow = true;
             cube.receiveShadow = true;
             scene.add( cube );
-            cubes.concat( cube );
+            cubes.push( cube );
+            console.log(cubes);
+        },
+
+        popCube: function(){
+            var cube = cubes.pop();    
+            scene.remove( cube );
+            console.log(cubes);
+        },
+
+        queueAdd: function(pos, color) {
         }
     };
 })();
