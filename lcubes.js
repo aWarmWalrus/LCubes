@@ -25,9 +25,11 @@ var lcubes = (function() {
             z: (pos.z + o.z) * 70}, color );
     }
 
+    /*
     function removeTransientCube() {
         graphics.popCube();
     }
+    */
 
     function drawConfig(origin, cubes, initDir) {
         if (cubes.length + 2 != num_cubes) {
@@ -115,6 +117,20 @@ var lcubes = (function() {
             z: Math.abs(p2.z - p1.z)};
     } 
 
+    function dupGrid(grid) {
+        var dup = [];
+        for (var i=0; i < grid.length; i++) {
+            dup.push(new Array());
+            for (var j=0; j < grid[i].length; j++) {
+                dup[i].push(new Array());
+                for (var k=0; k < grid[i][j].length; k++) {
+                    dup[i][j].push(grid[i][j][k]);
+                }
+            }
+        }
+        return dup;
+    }
+
     function dotProduct(v1, v2) {
         return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
     }
@@ -164,6 +180,9 @@ var lcubes = (function() {
     //
     //
     
+    // The block here is being considered and may not collide
+    // with other blocks. Immediately mark off as occupied.
+    //
     // [config] is the list of configurations until now
     //   in the beginning, should be an empty list
     // [pos] is this block's position. in the beginning, will 
@@ -171,6 +190,9 @@ var lcubes = (function() {
     // [dir] is this block's direction. in the beginning, will
     //   always be {x:1, y:0, z:0}
     function dfs(config, pos, dir, collisionGrid) {
+
+        graphics.pushCube(pos, colors[config.length + 1]);
+        markOccupied(pos, collisionGrid);
 
         var origin = {x:0, y:0, z:0};
         if (config.length == num_cubes-2) {
@@ -186,23 +208,21 @@ var lcubes = (function() {
                 console.log("accepted... i think??");
             }
             var stable = (gridDistance(pos, origin) == 1) && (pos.x == 0) && isPerpendicular;
+            if(!stable) { graphics.popCube(); }
             return {
                 isStable: stable,
                 completeConfig: config
             };
         }
+        // Decide the current block's orientation
         var seed = Math.floor(Math.random() * 4);
-        for (var i=0; i<5; i++) {
-            if (i == 4) {
-                return { isStable: false };
-            }
+        for (var i=0; i<4; i++) {
             var orient = (seed + i) % 4;
             var testDir = nextDir(dir, orient);
             var testPos = nextPos(pos, testDir);
             if (isCollision(testPos, collisionGrid)) {
                 continue;
             }
-            markOccupied(testPos, collisionGrid);
             config.push(orient);
             var resp = dfs(config, testPos, testDir, collisionGrid);
 
@@ -211,12 +231,14 @@ var lcubes = (function() {
                 console.log(resp);
                 return resp;
             }
-            
-            // restore the config and collision Grid
+
+            // restore the config
             config.pop();
-            // can add an assert here if bugs exist
-            markUnoccupied(testPos, collisionGrid);
         }
+            
+        // pop graphics
+        graphics.popCube();
+        return { isStable: false };
     }
 
     function init() {
@@ -227,13 +249,13 @@ var lcubes = (function() {
         var origin = {x:0, y:0, z:0};
         var initPos = {x:1, y:0, z:0};
         var initDir = {x:1, y:0, z:0};
-        markOccupied(initPos, collisions);
-        drawTransientCube(origin, colors[0]);
+
+        graphics.pushCube(origin, colors[0]);
         markOccupied(origin, collisions);
-        drawTransientCube(initPos, colors[1]);
+
         var resp = dfs(config, initPos, initDir, collisions);
         console.log(resp.completeConfig);
-        drawConfig({x:0, y:2, z:0}, resp.completeConfig, initDir);
+        //drawConfig({x:0, y:2, z:0}, resp.completeConfig, initDir);
     }
 
     init();

@@ -2,6 +2,7 @@ var graphics = (function() {
     var container, stats;
     var camera, scene, renderer, controls;
     var plane;
+    var gQueue = [];
     var cubes = [];
     var targetRotation = 0;
     var targetRotationOnMouseDown = 0;
@@ -9,6 +10,9 @@ var graphics = (function() {
     var mouseXOnMouseDown = 0;
     var windowHalfX = window.innerWidth / 2;
     var windowHalfY = window.innerHeight / 2;
+
+    var opDelay = 100;
+    var pQueueWaiting = 1;
 
     init();
     animate();
@@ -23,7 +27,7 @@ var graphics = (function() {
         scene = new THREE.Scene();
 
         // Plane 
-        var geometry = new THREE.PlaneBufferGeometry( 800, 800 );
+        var geometry = new THREE.PlaneBufferGeometry( 1500, 1500 );
         geometry.rotateX( - Math.PI / 2 );
         //var material = new THREE.MeshPhongMaterial( { color: 0xe0e0e0, overdraw: 0.5 } );
         var material = new THREE.ShadowMaterial();
@@ -133,33 +137,87 @@ var graphics = (function() {
         renderer.render( scene, camera );
     }
 
+    //
+    // --------- Cube Graphics Methods
+    //
+    function addCube(pos, color) {
+        var geometry = new THREE.BoxGeometry( 67, 67, 67 );
+        //console.log(geometry.faces.length);
+        for ( var i = 0; i < geometry.faces.length; i += 2 ) {
+            geometry.faces[ i ].color.setHex( color );
+            geometry.faces[ i + 1 ].color.setHex( color );
+        }
+        var material = new THREE.MeshPhongMaterial( { vertexColors: THREE.FaceColors, overdraw: 0.5 } );
+        var cube = new THREE.Mesh( geometry, material );
+        cube.position.x = pos.x;
+        cube.position.y = pos.y;
+        cube.position.z = pos.z;
+        cube.castShadow = true;
+        cube.receiveShadow = true;
+        scene.add( cube );
+        cubes.push( cube );    
+    }
+    
+    function removeCube() {
+        var cube = cubes.pop();    
+        scene.remove( cube );
+        //console.log( cubes );
+    }
+
+    function processQueue() {
+        console.log("processing, queue length: " + gQueue.length);
+
+        if (gQueue.length == 0) { 
+            pQueueWaiting = 1;
+            return 
+        };
+        var nextOp = gQueue.shift();
+
+        if (nextOp.op == "pop") {
+            console.log(" -> popping");
+            removeCube();
+        } else if (nextOp.op == "push") {
+            var v = {
+                x: nextOp.pos.x / 70,
+                y: (nextOp.pos.y - 35) / 70,
+                z: nextOp.pos.z / 70
+            };
+            console.log(" -> pushing at: (" + v.x + ", " + v.y + ", " + v.z + ") " + nextOp.col);
+            addCube(nextOp.pos, nextOp.col);   
+        }
+
+        setTimeout(processQueue, opDelay);
+    }
+
     return {
-        addCube: function(pos, color) {
-            var geometry = new THREE.BoxGeometry( 67, 67, 67 );
-            //console.log(geometry.faces.length);
-            for ( var i = 0; i < geometry.faces.length; i += 2 ) {
-                geometry.faces[ i ].color.setHex( color );
-                geometry.faces[ i + 1 ].color.setHex( color );
+        addCube: addCube,
+
+        removeCube: removeCube,
+
+        pushCube: function(position, color) {
+            var tPos = {
+                x: position.x * 70,
+                y: position.y * 70 + 35,
+                z: position.z * 70
+            };
+
+            gQueue.push({op: "push", pos: tPos, col: color});
+            if (pQueueWaiting) {
+                pQueueWaiting = 0;
+                processQueue();
             }
-            var material = new THREE.MeshPhongMaterial( { vertexColors: THREE.FaceColors, overdraw: 0.5 } );
-            var cube = new THREE.Mesh( geometry, material );
-            cube.position.x = pos.x;
-            cube.position.y = pos.y;
-            cube.position.z = pos.z;
-            cube.castShadow = true;
-            cube.receiveShadow = true;
-            scene.add( cube );
-            cubes.push( cube );
-            console.log(cubes);
         },
 
-        popCube: function(){
-            var cube = cubes.pop();    
-            scene.remove( cube );
-            console.log(cubes);
+        popCube: function() {
+            gQueue.push({op: "pop"});
+            if (pQueueWaiting) {
+                pQueueWaiting = 0;
+                processQueue();
+            }
         },
 
-        queueAdd: function(pos, color) {
+        setDelay: function(d) {
+            opDelay = d;
         }
     };
 })();
