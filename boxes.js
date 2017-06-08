@@ -11,12 +11,18 @@ var graphics = (function() {
     var windowHalfX = window.innerWidth / 2;
     var windowHalfY = window.innerHeight / 2;
 
-    var opDelay = 100;
+    var opDelay = 50;
     var pQueueWaiting = 1;
 
     init();
     animate();
 
+    var LOGGING = false;
+
+
+    function cLog (msg) {
+        if (LOGGING) { console.log(msg); }
+    }
 
     function init() {
         container = document.getElementById('container');
@@ -142,7 +148,7 @@ var graphics = (function() {
     //
     function addCube(pos, color) {
         var geometry = new THREE.BoxGeometry( 67, 67, 67 );
-        //console.log(geometry.faces.length);
+        //cLog(geometry.faces.length);
         for ( var i = 0; i < geometry.faces.length; i += 2 ) {
             geometry.faces[ i ].color.setHex( color );
             geometry.faces[ i + 1 ].color.setHex( color );
@@ -161,11 +167,11 @@ var graphics = (function() {
     function removeCube() {
         var cube = cubes.pop();    
         scene.remove( cube );
-        //console.log( cubes );
+        //cLog( cubes );
     }
 
     function processQueue() {
-        console.log("processing, queue length: " + gQueue.length);
+        cLog("processing, queue length: " + gQueue.length);
 
         if (gQueue.length == 0) { 
             pQueueWaiting = 1;
@@ -174,7 +180,7 @@ var graphics = (function() {
         var nextOp = gQueue.shift();
 
         if (nextOp.op == "pop") {
-            console.log(" -> popping");
+            cLog(" -> popping");
             removeCube();
         } else if (nextOp.op == "push") {
             var v = {
@@ -182,7 +188,7 @@ var graphics = (function() {
                 y: (nextOp.pos.y - 35) / 70,
                 z: nextOp.pos.z / 70
             };
-            console.log(" -> pushing at: (" + v.x + ", " + v.y + ", " + v.z + ") " + nextOp.col);
+            cLog(" -> pushing at: (" + v.x + ", " + v.y + ", " + v.z + ") " + nextOp.col);
             addCube(nextOp.pos, nextOp.col);   
         }
 
@@ -197,7 +203,7 @@ var graphics = (function() {
         pushCube: function(position, color) {
             var tPos = {
                 x: position.x * 70,
-                y: position.y * 70 + 35,
+                y: position.y * 70 + 35 + 70 * 2,
                 z: position.z * 70
             };
 
