@@ -11,7 +11,7 @@ var lcubes = (function() {
 
     var ORIGIN = {x:0, y:0, z:0};
 
-    var NUM_CUBES = 9;
+    var NUM_CUBES = 12;
 
     var LOGGING = true;
     var OPTIMIZE = true;
@@ -224,6 +224,7 @@ var lcubes = (function() {
         if (config.length == NUM_CUBES-2) {
             var dv = gridDistanceVector(ORIGIN, pos);
             var isPerpendicular = dotProduct(dv, dir) == 0;
+            /*
             if (gridDistance(pos, ORIGIN) != 0) {
                 cLog("rejected because not adjacent");
             } else if (!pos.x == 0) {
@@ -233,8 +234,10 @@ var lcubes = (function() {
             } else {
                 cLog("accepted... i think??");
             }
+            */
             var stable = (gridDistance(pos, ORIGIN) == 0) && (pos.x == 0) && isPerpendicular;
             if(!stable) { graphics.popCube(); }
+            markUnoccupied(pos);
             return {
                 isStable: stable,
                 completeConfig: config,
@@ -247,8 +250,8 @@ var lcubes = (function() {
         var stepsHere = 1;
         for (var i=0; i<4; i++) {
             var orient = (seed + i) % 4;
-            //var testDir = nextDir(dir, orient);
-            var testDir = nextDir(dir, i);
+            var testDir = nextDir(dir, orient);
+            //var testDir = nextDir(dir, i);
             var testPos = nextPos(pos, testDir);
             if (isCollision(testPos)) {
                 //cLog("collision");

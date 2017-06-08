@@ -14,11 +14,14 @@ var graphics = (function() {
     var opDelay = 50;
     var pQueueWaiting = 1;
 
+    // Constants
+    var CUBE_LENGTH = 70;
+    var GAP_WIDTH = 3;
+
     init();
     animate();
 
     var LOGGING = false;
-
 
     function cLog (msg) {
         if (LOGGING) { console.log(msg); }
@@ -26,19 +29,21 @@ var graphics = (function() {
 
     function init() {
         container = document.getElementById('container');
+
+        // Camera
         camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 1, 10000 );
-        camera.position.y = 150;
-        camera.position.z = 500;
+        camera.position.y = 450;
+        camera.position.z = 600;
 
         scene = new THREE.Scene();
 
         // Plane 
         var geometry = new THREE.PlaneBufferGeometry( 1500, 1500 );
         geometry.rotateX( - Math.PI / 2 );
+        geometry.translate(0, -175, 0);
         //var material = new THREE.MeshPhongMaterial( { color: 0xe0e0e0, overdraw: 0.5 } );
         var material = new THREE.ShadowMaterial();
         material.opacity = 0.5;
-
         plane = new THREE.Mesh( geometry, material );
         plane.receiveShadow = true;
         scene.add( plane );
@@ -147,7 +152,8 @@ var graphics = (function() {
     // --------- Cube Graphics Methods
     //
     function addCube(pos, color) {
-        var geometry = new THREE.BoxGeometry( 67, 67, 67 );
+        var width = CUBE_LENGTH - GAP_WIDTH;
+        var geometry = new THREE.BoxGeometry( width, width, width );
         //cLog(geometry.faces.length);
         for ( var i = 0; i < geometry.faces.length; i += 2 ) {
             geometry.faces[ i ].color.setHex( color );
@@ -184,9 +190,9 @@ var graphics = (function() {
             removeCube();
         } else if (nextOp.op == "push") {
             var v = {
-                x: nextOp.pos.x / 70,
-                y: (nextOp.pos.y - 35) / 70,
-                z: nextOp.pos.z / 70
+                x: nextOp.pos.x / CUBE_LENGTH,
+                y: (nextOp.pos.y - (CUBE_LENGTH / 2)) / CUBE_LENGTH,
+                z: nextOp.pos.z / CUBE_LENGTH
             };
             cLog(" -> pushing at: (" + v.x + ", " + v.y + ", " + v.z + ") " + nextOp.col);
             addCube(nextOp.pos, nextOp.col);   
@@ -202,9 +208,9 @@ var graphics = (function() {
 
         pushCube: function(position, color) {
             var tPos = {
-                x: position.x * 70,
-                y: position.y * 70 + 35 + 70 * 2,
-                z: position.z * 70
+                x: position.x * CUBE_LENGTH,
+                y: position.y * CUBE_LENGTH,
+                z: position.z * CUBE_LENGTH
             };
 
             gQueue.push({op: "push", pos: tPos, col: color});
