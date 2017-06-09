@@ -203,6 +203,10 @@ var lcubes = (function() {
         return gridDistance(position, ORIGIN) > remainingCubes;
     }
 
+    function hasHole(pos) {
+        return (pos.x >= 0) && (pos.y >= 0) && !((pos.x == 1) && (pos.y == 1));
+    }
+
     //
     // ------- Depth First Search for stable configurations
     //
@@ -236,18 +240,23 @@ var lcubes = (function() {
             }
             */
             var stable = (gridDistance(pos, ORIGIN) == 0) && (pos.x == 0) && isPerpendicular;
-            if(!stable) { graphics.popCube(); }
+            var i = 1;
+            if(!stable) { graphics.popCube(); i = 0;}
+            //if(!stable) { i = 0;}
+            //graphics.popCube();
             markUnoccupied(pos);
             return {
                 isStable: stable,
                 completeConfig: config,
-                steps: 1
+                steps: 1,
+                stableConfigs: i
             };
         }
 
         // Decide the current block's orientation
         var seed = Math.floor(Math.random() * 4);
         var stepsHere = 1;
+        var stableConfigsFound = 0;
         for (var i=0; i<4; i++) {
             var orient = (seed + i) % 4;
             var testDir = nextDir(dir, orient);
@@ -262,13 +271,25 @@ var lcubes = (function() {
                 //cLog("too far!!! (" + testPos.x + "," + testPos.y + "," + testPos.z + ")... distance="+gridDistance(testPos,ORIGIN) + " remaining blocks=" + (NUM_CUBES - config.length - 2));
                 continue;
             }
+
+            /*
+            if (!hasHole(testPos)) {
+                continue;
+            }
+
+            if ((config.length == 5) && (pos.x != pos.y)) {
+                continue;
+            }
+            */
+
             config.push(orient);
             var resp = dfs(config, testPos, testDir);
             stepsHere += resp.steps;
+            stableConfigsFound += resp.stableConfigs;
 
             if (resp.isStable) {
-                cLog("going home!");
-                cLog(resp);
+                //cLog("going home!");
+                //cLog(resp);
                 resp.steps = stepsHere;
                 return resp;
             }
@@ -280,7 +301,7 @@ var lcubes = (function() {
         // pop graphics
         graphics.popCube();
         markUnoccupied(pos);
-        return { isStable: false, steps: stepsHere };
+        return { isStable: false, steps: stepsHere, stableConfigs: stableConfigsFound};
     }
 
     function init() {

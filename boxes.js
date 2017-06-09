@@ -1,6 +1,6 @@
 var graphics = (function() {
     var container, stats;
-    var camera, scene, renderer, controls;
+    var camera, scene, renderer, controls, raycaster, mouse;
     var plane;
     var gQueue = [];
     var cubes = [];
@@ -11,12 +11,20 @@ var graphics = (function() {
     var windowHalfX = window.innerWidth / 2;
     var windowHalfY = window.innerHeight / 2;
 
-    var opDelay = 50;
+    // User-interface variables
+    var opDelay = 100;
+
+    // Synchronicity
     var pQueueWaiting = 1;
+
+    // Postprocessing
+    var composer, outlinePass1, outlinePass2;
+    var moved;
 
     // Constants
     var CUBE_LENGTH = 70;
     var GAP_WIDTH = 3;
+    var INTERSECTED;
 
     init();
     animate();
@@ -36,6 +44,12 @@ var graphics = (function() {
         camera.position.z = 600;
 
         scene = new THREE.Scene();
+
+        // Raycaster
+        raycaster = new THREE.Raycaster();
+
+        // Mouse
+        mouse = new THREE.Vector2();
 
         // Plane 
         var geometry = new THREE.PlaneBufferGeometry( 1500, 1500 );
@@ -68,7 +82,7 @@ var graphics = (function() {
 
         // Renderer
         renderer = new THREE.WebGLRenderer();
-        renderer.setClearColor( 0xf0f0f0, 1.0 );
+        renderer.setClearColor( 0x202020 );
         renderer.setPixelRatio( window.devicePixelRatio );
         renderer.setSize( window.innerWidth, window.innerHeight );
         renderer.shadowMap.enabled = true;
@@ -79,10 +93,56 @@ var graphics = (function() {
         controls.maxPolarAngle = Math.PI / 2.1;
 
         container.appendChild( renderer.domElement );
-        document.addEventListener( 'mousedown', onDocumentMouseDown, false );
-        document.addEventListener( 'touchstart', onDocumentTouchStart, false );
-        document.addEventListener( 'touchmove', onDocumentTouchMove, false );
+        document.addEventListener( 'mousemove', onDocumentMouseMove, false );
         window.addEventListener( 'resize', onWindowResize, false );
+        window.addEventListener( 'mousedown', function() {
+            moved = false;
+        }, false );
+        window.addEventListener( 'mouseup', function() {
+            if (!moved) selectCube();
+        });
+
+        controls.addEventListener( 'change', function() {
+            moved = true;
+        });
+
+
+        // Post Processing
+        composer = new THREE.EffectComposer( renderer );
+
+        var renderPass = new THREE.RenderPass( scene, camera );
+        composer.addPass( renderPass );
+
+        outlinePass1 = new THREE.OutlinePass(
+                new THREE.Vector2(window.innerWidth, window.innerHeight),
+                scene, camera);
+        outlinePass1.edgeStrength = 5.0;
+        outlinePass1.edgeThickness = 0.2;
+        outlinePass1.visibleEdgeColor = new THREE.Color(1, 0.2, 0.2, 1);
+        composer.addPass( outlinePass1 );
+
+        outlinePass2 = new THREE.OutlinePass(
+                new THREE.Vector2(window.innerWidth, window.innerHeight),
+                scene, camera);
+        outlinePass2.edgeStrength = 1.0;
+        outlinePass2.edgeThickness = 0.2;
+        outlinePass2.visibleEdgeColor = new THREE.Color(1, 1, 1, 0.5);
+        composer.addPass( outlinePass2 );
+
+        var shaderPass = new THREE.ShaderPass( THREE.CopyShader );
+        shaderPass.renderToScreen = true;
+        composer.addPass( shaderPass );
+
+    }
+
+    function onDocumentMouseMove( event ) {
+        
+        event.preventDefault();
+
+        mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+        mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+
+        //console.log( "mouse x:", mouse.x, "y:", mouse.y);
     }
 
     function onWindowResize() {
@@ -93,50 +153,6 @@ var graphics = (function() {
         renderer.setSize( window.innerWidth, window.innerHeight );
     }
 
-    function onDocumentMouseDown( event ) {
-        event.preventDefault();
-        document.addEventListener( 'mousemove', onDocumentMouseMove, false );
-        document.addEventListener( 'mouseup', onDocumentMouseUp, false );
-        document.addEventListener( 'mouseout', onDocumentMouseOut, false );
-        //mouseXOnMouseDown = event.clientX - windowHalfX;
-        mouseYOnMouseDown = event.clientY - windowHalfY;
-        targetRotationOnMouseDown = targetRotation;
-    }
-
-    function onDocumentMouseMove( event ) {
-        //mouseX = event.clientX - windowHalfX;
-        mouseY = event.clientY - windowHalfY;
-        //targetRotation = targetRotationOnMouseDown + ( mouseX - mouseXOnMouseDown ) * 0.02;
-        targetRotation = targetRotationOnMouseDown + ( mouseY - mouseYOnMouseDown ) * 0.02;
-    }
-
-    function onDocumentMouseUp( event ) {
-        document.removeEventListener( 'mousemove', onDocumentMouseMove, false );
-        document.removeEventListener( 'mouseup', onDocumentMouseUp, false );
-        document.removeEventListener( 'mouseout', onDocumentMouseOut, false );
-    }
-
-    function onDocumentMouseOut( event ) {
-        document.removeEventListener( 'mousemove', onDocumentMouseMove, false );
-        document.removeEventListener( 'mouseup', onDocumentMouseUp, false );
-        document.removeEventListener( 'mouseout', onDocumentMouseOut, false );
-    }
-
-    function onDocumentTouchStart( event ) {
-        if ( event.touches.length === 1 ) {
-            event.preventDefault();
-            mouseXOnMouseDown = event.touches[ 0 ].pageX - windowHalfX;
-            targetRotationOnMouseDown = targetRotation;
-        }
-    }
-
-    function onDocumentTouchMove( event ) {
-        if ( event.touches.length === 1 ) {
-            event.preventDefault();
-            mouseX = event.touches[ 0 ].pageX - windowHalfX;
-            targetRotation = targetRotationOnMouseDown + ( mouseX - mouseXOnMouseDown ) * 0.05;
-        }
-    }
 
     //
     function animate() {
@@ -144,8 +160,53 @@ var graphics = (function() {
         render();
     }
 
+    function isPhongMaterial(obj) {
+        return ((obj !== undefined) && (obj.object !== undefined) && (obj.object.material !== undefined) && (obj.object.material.emissive !== undefined));
+    }
+
+    function handleRayIntersect() {
+        raycaster.setFromCamera( mouse, camera );
+        var intersects = raycaster.intersectObjects( scene.children );
+
+        intersects = intersects.filter(isPhongMaterial);
+
+        if ( intersects.length > 0 ) {
+            if ( INTERSECTED != intersects[0].object ) {
+                // Reset the previously intersected object's color
+                if ( INTERSECTED ) { INTERSECTED.material.emissive.setHex(INTERSECTED.currentHex); }
+
+                INTERSECTED = intersects[0].object;
+                INTERSECTED.currentHex = INTERSECTED.material.emissive.getHex();
+                INTERSECTED.material.emissive.setHex( 0x800000, 0.2 );
+            }
+        } else { 
+            // Reset the previously intersected object's color
+            if ( INTERSECTED ) { INTERSECTED.material.emissive.setHex(INTERSECTED.currentHex); }
+            INTERSECTED = null;
+        }
+    }
+
+    function selectCube() {
+        if ( INTERSECTED ) {
+            outlinePass1.selectedObjects = [INTERSECTED];
+            for (var i = 0; i<cubes.length; i++) {
+                if (cubes[i] == INTERSECTED) break;
+            }
+            var prev = (i - 1 + cubes.length) % cubes.length;
+            var next = (i + 1) % cubes.length;
+            outlinePass2.selectedObjects = [cubes[prev], cubes[next]];
+        } else {
+            outlinePass1.selectedObjects = [];
+            outlinePass2.selectedObjects = [];
+        }
+    }
+
     function render() {
-        renderer.render( scene, camera );
+
+        handleRayIntersect();
+
+        composer.render();
+        //renderer.render( scene, camera );
     }
 
     //
